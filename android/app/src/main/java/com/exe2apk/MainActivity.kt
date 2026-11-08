@@ -5,6 +5,7 @@ import android.app.Activity
 import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.graphics.Color
 import android.view.Gravity
 import android.widget.Button
@@ -73,15 +74,7 @@ class MainActivity : Activity() {
             type = "*/*"
         }
 
-        try {
-            startActivityForResult(intent, PICK_EXE_FILE)
-        } catch (e: Exception) {
-            Toast.makeText(
-                this,
-                "Não foi possível abrir os arquivos",
-                Toast.LENGTH_LONG
-            ).show()
-        }
+        startActivityForResult(intent, PICK_EXE_FILE)
     }
 
     @Deprecated("Using activity result callback")
@@ -95,26 +88,51 @@ class MainActivity : Activity() {
         if (requestCode == PICK_EXE_FILE &&
             resultCode == RESULT_OK
         ) {
-            val uri: Uri? = data?.data
+            val uri: Uri = data?.data ?: return
 
-            if (uri != null) {
-                val name = uri.lastPathSegment ?: "Arquivo selecionado"
+            val name = getFileName(uri)
 
-                if (name.lowercase().endsWith(".exe")) {
-                    fileName.text = "Selecionado: $name"
-                    Toast.makeText(
-                        this,
-                        "Arquivo EXE selecionado!",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                } else {
-                    Toast.makeText(
-                        this,
-                        "Selecione um arquivo .exe",
-                        Toast.LENGTH_LONG
-                    ).show()
+            if (name.lowercase().endsWith(".exe")) {
+                fileName.text = "EXE selecionado:\n$name"
+
+                Toast.makeText(
+                    this,
+                    "Arquivo selecionado com sucesso!",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                fileName.text = "Arquivo inválido:\n$name"
+
+                Toast.makeText(
+                    this,
+                    "Escolha um arquivo com extensão .exe",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    private fun getFileName(uri: Uri): String {
+        var name = "Arquivo desconhecido"
+
+        contentResolver.query(
+            uri,
+            arrayOf(OpenableColumns.DISPLAY_NAME),
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(
+                    OpenableColumns.DISPLAY_NAME
+                )
+
+                if (index >= 0) {
+                    name = cursor.getString(index)
                 }
             }
         }
+
+        return name
     }
 }
